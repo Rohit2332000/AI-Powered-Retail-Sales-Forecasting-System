@@ -1,0 +1,77 @@
+
+name: Deploy FastAPI Backend to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy backend files to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/ec2_key "$EC2_USER@$EC2_HOST" \
+            "mkdir -p ~/sales-ai-backend"
+
+          rsync -az --delete \
+            --exclude='.env' \
+            --exclude='.venv/' \
+            --exclude='__pycache__/' \
+            -e "ssh -i ~/.ssh/ec2_key" \
+            ./ "$EC2_USER@$EC2_HOST:~/sales-ai-backend/"
+
+      - name: Configure environment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_ENV_FILE: ${{ secrets.EC2_ENV_FILE }}
+        run: |
+          printf '%s\n' "$EC2_ENV_FILE" > backend.env
+          scp -i ~/.ssh/ec2_key backend.env \
+            "$EC2_USER@$EC2_HOST:~/sales-ai-backend/.env"
+          rm -f backend.env
+
+      - name: Build and restart backend
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/ec2_key "$EC2_USER@$EC2_HOST" <<'REMOTE'
+            set -e
+            cd ~/sales-ai-backend
+
+            sudo docker build -t sales-ai-backend:latest .
+            sudo docker rm -f sales-ai-backend || true
+
+            sudo docker run -d \
+              --name sales-ai-backend \
+              --restart unless-stopped \
+              --env-file .env \
+              -p 8000:8000 \
+              sales-ai-backend:latest
+
+            sudo docker ps
+            sudo docker image prune -f
+          REMOTE
