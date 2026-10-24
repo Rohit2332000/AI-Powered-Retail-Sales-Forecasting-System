@@ -6,9 +6,11 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Union
 
+
+from langsmith import traceable, Client
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-
+from dotenv import load_dotenv
 from src.data import analytics, databricks_jobs
 from src.data.databricks_jobs import DatabricksJobsConfigError
 from src.data.db import (
@@ -51,6 +53,8 @@ from src.models.schemas import (
     UploadedFileInfo,
 )
 
+
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sales_forecasting_api")
 
@@ -81,6 +85,8 @@ app.add_middleware(
     summary="Health check",
     description="Confirms the API is running and can reach the Databricks SQL warehouse.",
 )
+
+@traceable(name="databricks-health-check", run_type="chain")
 def health() -> HealthResponse:
     try:
         check_connection()
@@ -147,6 +153,7 @@ def _merge_points(history_rows: list[dict], forecast_rows: list[dict]) -> List[F
         "other null."
     ),
 )
+@traceable(name="get-sales-forecast", run_type="chain")
 def get_forecast(
     product_id: Optional[str] = Query(None, description="Filter by product ID"),
     store_id: Optional[str] = Query(None, description="Filter by store ID"),
@@ -203,6 +210,8 @@ def get_forecast(
         "a full, unrestricted dump for the multi-product view."
     ),
 )
+
+@traceable(name="get-sales--all-forecast", run_type="chain")
 def get_forecast_trend_all() -> List[ProductForecastGroup]:
     try:
         products = fetch_distinct_products()
@@ -243,6 +252,7 @@ def get_forecast_trend_all() -> List[ProductForecastGroup]:
         "context; otherwise a general explanation is produced."
     ),
 )
+@traceable(name="explain-forecast", run_type="chain")
 def explain_forecast(request: ExplainRequest) -> ExplainResponse:
     try:
         forecast_rows = fetch_forecasts(product_id=request.product_id, store_id=request.store_id)
@@ -328,6 +338,7 @@ def explain_forecast(request: ExplainRequest) -> ExplainResponse:
     summary="List all products",
     description="Returns every product from sales_ai.silver.products, for populating a product selector.",
 )
+@traceable(name="get-products", run_type="chain")
 def get_products() -> List[Product]:
     try:
         rows = fetch_products()
@@ -347,6 +358,7 @@ def get_products() -> List[Product]:
     summary="List all stores",
     description="Returns every store from sales_ai.silver.stores, for populating a store selector.",
 )
+@traceable(name="get-stores", run_type="chain")
 def get_stores() -> List[Store]:
     try:
         rows = fetch_stores()
@@ -373,6 +385,7 @@ def get_stores() -> List[Store]:
         "both can render in the same chat thread."
     ),
 )
+@traceable(name="chat", run_type="chain")
 def chat(request: ChatRequest) -> ChatResponse:
     history = [{"role": turn.role, "content": turn.content} for turn in request.history]
 
@@ -409,6 +422,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         "`store_performance` requires params `store_id`."
     ),
 )
+@traceable(name="quick-chat", run_type="chain")
 def chat_quick(request: QuickActionRequest) -> ChatResponse:
     try:
         result = run_quick_action(request.action, request.params)
@@ -436,6 +450,7 @@ def chat_quick(request: QuickActionRequest) -> ChatResponse:
         "revenue. Reuses the same analytics.py functions as /chat and /chat/quick."
     ),
 )
+@traceable(name="get-kpis", run_type="chain")
 def get_kpis() -> KPISummary:
     try:
         summary = analytics.get_kpi_summary()
@@ -539,6 +554,7 @@ def _trigger_pipeline_job() -> int:
         "GET /pipeline/status/{run_id} for progress."
     ),
 )
+@traceable(name="trigger-pipeline", run_type="chain")
 def trigger_pipeline() -> PipelineTriggerResponse:
     run_id = _trigger_pipeline_job()
     return PipelineTriggerResponse(run_id=run_id)
@@ -554,6 +570,7 @@ def trigger_pipeline() -> PipelineTriggerResponse:
         "be polled every few seconds by the frontend until the run reaches a terminal state."
     ),
 )
+@traceable(name="get-pipeline-status", run_type="chain")
 def get_pipeline_status(run_id: int) -> PipelineStatusResponse:
     try:
         status = databricks_jobs.get_run_status(run_id)
@@ -586,6 +603,7 @@ def get_pipeline_status(run_id: int) -> PipelineStatusResponse:
         "data that's already uploaded, with no new file."
     ),
 )
+@traceable(name="upload-and-trigger-pipeline", run_type="chain")
 async def upload_and_trigger_pipeline(
     sales_transactions_file: Optional[UploadFile] = File(
         None, description="CSV whose filename starts with 'sales_transactions', e.g. sales_transactions_2026_09.csv"
@@ -614,6 +632,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+import os
+
+print("Tracing enabled:", os.getenv("LANGSMITH_TRACING"))
+print("API key configured:", bool(os.getenv("LANGSMITH_API_KEY")))
+print("Project:", os.getenv("LANGSMITH_PROJECT"))
 
 
 if __name__ == "__main__":
