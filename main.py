@@ -606,12 +606,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://34.229.58.71:3000",
         "https://ai-powered-retail-sales-forecasting-eta.vercel.app",
-        "https://ai-powered-retail-sales-forecasting-system-frontend-2cc4b1q7t.vercel.app",
         "https://ai-powered-retail-sales-forecasting-five.vercel.app",
-        "https://ai-powered-retail-sales-forecasting-five.vercel.app",
-        "https://ai-powered-retail-sales-forecasting-nine.vercel.app",
-        "https://ai-powered-retail-sales-forecasting.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
