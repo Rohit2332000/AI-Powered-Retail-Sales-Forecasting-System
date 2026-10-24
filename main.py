@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime
 from typing import List, Optional, Union
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -606,14 +606,10 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://ai-powered-retail-sales-forecasting-theta.vercel.app",
+        "https://ai-powered-retail-sales-forecasting-system-frontend-2cc4b1q7t.vercel.app",
         "https://ai-powered-retail-sales-forecasting.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
