@@ -57,3 +57,6 @@ logs/
 .DS_Store
 .python-version
 *.pyo
+
+private
+private.pub

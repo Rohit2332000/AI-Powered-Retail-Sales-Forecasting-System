@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-fastapi-ec2
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -17,29 +21,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate deployment secrets
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_ENV_FILE: ${{ secrets.EC2_ENV_FILE }}
+        run: |
+          set -eu
+          test -n "$EC2_HOST" || { echo "EC2_HOST is missing"; exit 1; }
+          test -n "$EC2_USER" || { echo "EC2_USER is missing"; exit 1; }
+          test -n "$EC2_SSH_KEY" || { echo "EC2_SSH_KEY is missing"; exit 1; }
+          test -n "$EC2_ENV_FILE" || { echo "EC2_ENV_FILE is missing"; exit 1; }
+          test -f Dockerfile || { echo "Dockerfile not found at repository root"; exit 1; }
+
       - name: Configure SSH
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          set -eu
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
-          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+          ssh-keyscan -T 10 -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=15 \
+            "$EC2_USER@$EC2_HOST" \
+            "echo 'SSH connection successful' && sudo docker --version"
 
       - name: Copy backend files to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
         run: |
-          ssh -i ~/.ssh/ec2_key "$EC2_USER@$EC2_HOST" \
+          set -eu
+
+          ssh -i ~/.ssh/ec2_key -o IdentitiesOnly=yes \
+            "$EC2_USER@$EC2_HOST" \
             "mkdir -p ~/sales-ai-backend"
 
           rsync -az --delete \
             --exclude='.env' \
             --exclude='.venv/' \
+            --exclude='venv/' \
             --exclude='__pycache__/' \
-            -e "ssh -i ~/.ssh/ec2_key" \
+            --exclude='.git/' \
+            --exclude='private' \
+            --exclude='private.pub' \
+            -e "ssh -i ~/.ssh/ec2_key -o IdentitiesOnly=yes" \
             ./ "$EC2_USER@$EC2_HOST:~/sales-ai-backend/"
 
       - name: Configure environment
@@ -48,9 +88,14 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_ENV_FILE: ${{ secrets.EC2_ENV_FILE }}
         run: |
+          set -eu
+          umask 077
           printf '%s\n' "$EC2_ENV_FILE" > backend.env
-          scp -i ~/.ssh/ec2_key backend.env \
+
+          scp -i ~/.ssh/ec2_key -o IdentitiesOnly=yes \
+            backend.env \
             "$EC2_USER@$EC2_HOST:~/sales-ai-backend/.env"
+
           rm -f backend.env
 
       - name: Build and restart backend
@@ -58,11 +103,14 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
         run: |
-          ssh -i ~/.ssh/ec2_key "$EC2_USER@$EC2_HOST" <<'REMOTE'
-            set -e
+          ssh -i ~/.ssh/ec2_key -o IdentitiesOnly=yes \
+            "$EC2_USER@$EC2_HOST" <<'REMOTE'
+            set -eu
             cd ~/sales-ai-backend
 
             sudo docker build -t sales-ai-backend:latest .
+
+            # Remove the previous container only after the image builds.
             sudo docker rm -f sales-ai-backend || true
 
             sudo docker run -d \
@@ -72,6 +120,13 @@ jobs:
               -p 8000:8000 \
               sales-ai-backend:latest
 
-            sudo docker ps
+            sleep 5
+
+            if [ "$(sudo docker inspect -f '{{.State.Running}}' sales-ai-backend)" != "true" ]; then
+              sudo docker logs --tail 100 sales-ai-backend || true
+              exit 1
+            fi
+
+            sudo docker ps --filter name=sales-ai-backend
             sudo docker image prune -f
           REMOTE
