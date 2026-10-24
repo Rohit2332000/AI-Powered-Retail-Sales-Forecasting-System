@@ -633,11 +633,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import os
-
-print("Tracing enabled:", os.getenv("LANGSMITH_TRACING"))
-print("API key configured:", bool(os.getenv("LANGSMITH_API_KEY")))
-print("Project:", os.getenv("LANGSMITH_PROJECT"))
 
 
 if __name__ == "__main__":

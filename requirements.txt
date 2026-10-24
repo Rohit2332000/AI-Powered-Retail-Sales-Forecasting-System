@@ -6,3 +6,4 @@ databricks-sdk
 openai
 pyarrow
 python-multipart
+langsmith
