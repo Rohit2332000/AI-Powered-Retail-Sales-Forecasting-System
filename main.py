@@ -608,7 +608,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "https://ai-powered-retail-sales-forecasting-eta.vercel.app",
         "https://ai-powered-retail-sales-forecasting-system-frontend-2cc4b1q7t.vercel.app",
-        "https://ai-powered-retail-sales-forecasting-delta.vercel.app",
+        "https://ai-powered-retail-sales-forecasting-five.vercel.app",
         "https://ai-powered-retail-sales-forecasting.onrender.com",
     ],
     allow_credentials=True,
