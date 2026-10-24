@@ -607,9 +607,17 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "https://ai-powered-retail-sales-forecasting-theta.vercel.app",
         "https://ai-powered-retail-sales-forecasting-system-frontend-2cc4b1q7t.vercel.app",
+        "https://ai-powered-retail-sales-forecasting-delta.vercel.app",
         "https://ai-powered-retail-sales-forecasting.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
