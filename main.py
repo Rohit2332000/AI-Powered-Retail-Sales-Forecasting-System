@@ -76,7 +76,7 @@ app.add_middleware(
 
 
 @app.get(
-    "/health",
+    "/healthy",
     response_model=HealthResponse,
     summary="Health check",
     description="Confirms the API is running and can reach the Databricks SQL warehouse.",
