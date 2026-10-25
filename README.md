@@ -236,6 +236,10 @@ docker rm sales-ai-backend
 
 After changing `requirements.txt`, rebuild the image and recreate the container so the new dependency is installed. If GitHub Actions handles deployment, verify that the workflow rebuilds and deploys the image.
 
+
+
+# LIVE LINK: http://34.229.58.71:3000
+
 ## LangSmith Tracing
 
 Set the following environment variables in the runtime environment:
