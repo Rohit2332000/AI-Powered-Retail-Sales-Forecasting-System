@@ -2,7 +2,35 @@
 
 FastAPI backend for an AI-powered retail sales forecasting platform. It connects the frontend to Databricks data and ML workflows, exposes forecasting and analytics APIs, supports data uploads and pipeline triggers, and provides an LLM-powered analytics chat experience.
 
+
+## Problem Statement
+
+Retail businesses generate large volumes of sales data, but turning this data into accurate forecasts and actionable business insights can be challenging. Traditional reporting often focuses on historical performance and may not provide an integrated way to forecast future demand, understand sales trends, or respond quickly to changing business conditions.
+
+Additionally, updating datasets, rerunning data pipelines, comparing machine learning models, and interpreting forecasting results can require multiple disconnected tools and manual effort.
+
+## Solution
+
+The **AI-Powered Retail Sales Forecasting System** provides an integrated platform that combines machine learning, data engineering, and generative AI to support data-driven retail decision-making.
+
+The system addresses these challenges through:
+
+- **30-Day Sales Forecasting:** Generates sales forecasts for the next 30 days to help businesses plan inventory, demand, and operations.
+- **Automated Data Processing:** Uses Databricks and a Bronze–Silver–Gold medallion architecture to organize and transform retail data.
+- **Model Experimentation and Selection:** Integrates MLflow to track experiments, compare model performance, and select the best-performing model according to configured evaluation metrics.
+- **On-Demand Pipeline Execution:** Allows users to upload new datasets and trigger data processing and model workflows through backend APIs.
+- **AI-Powered Analytics Chat:** Enables users to ask natural-language questions about retail sales and obtain data-driven insights through an LLM-powered interface.
+- **Forecast Explanations and KPIs:** Provides API endpoints for forecasts, key performance indicators, and explanations to support business analysis.
+- **LLM Observability:** Integrates LangSmith to trace and debug instrumented LLM and application workflows.
+- **Automated Deployment:** Uses Docker, AWS EC2, and GitHub Actions CI/CD to package and deploy the frontend and backend as separate services.
+
+## Business Value
+
+The platform brings forecasting, data processing, model evaluation, and conversational analytics into one workflow. It aims to reduce manual operational effort, improve visibility into future sales demand, and help retail teams make more informed decisions using historical data and machine learning predictions.
+
 ## Architecture
+
+![alt text](<../AI-Powered Retail Forecasting Architecture.png>)
 
 The platform is organized into three services:
 
