@@ -30,7 +30,8 @@ The platform brings forecasting, data processing, model evaluation, and conversa
 
 ## Architecture
 
-![alt text](<../AI-Powered Retail Forecasting Architecture.png>)
+![Uploading AI-Powered Retail Forecasting Architecture.png…]()
+
 
 The platform is organized into three services:
 
